@@ -41,6 +41,38 @@ CHIP ALU {
         zr, // 1 if (out == 0), 0 otherwise
         ng; // 1 if (out < 0),  0 otherwise
 
+        // Note: bla[0] is LSB, bla[n-1] is MSB, 2^(n-1)
+        // 0==false, 1==true
     PARTS:
-   // Put you code here:
+    
+
+    Mux16(a=x, b=false, sel=zx, out=xOrZeroOut);                    // x or 0         (zx flag)
+    Not16(in=xOrZeroOut, out=notx);                                 // inverted x FROM PREVIOUS STEP! (~xOrZeroOut)
+    Mux16(a=xOrZeroOut, b=notx, sel=nx, out=xOrZeroOrNegatedOut);   // x or 0 or ~x   (nx flag)
+    
+
+    Mux16(a=y, b=false, sel=zy, out=yOrZeroOut);                    // y or 0         (zy flag)
+    Not16(in=yOrZeroOut, out=noty);                                 // inverted y (~y)
+    Mux16(a=yOrZeroOut, b=noty, sel=ny, out=yOrZeroOrNegatedOut);   // y or 0 or ~y   (ny flag)
+    
+
+    Add16(a=xOrZeroOrNegatedOut, b=yOrZeroOrNegatedOut, out=xPlusY);
+    And16(a=xOrZeroOrNegatedOut, b=yOrZeroOrNegatedOut, out=xAndY);    
+    Mux16(a=xAndY, b=xPlusY, sel=f, out=xOpY);
+    
+    
+    Not16(in=xOpY, out=xOpYNot);
+    Mux16(a=xOpY, b=xOpYNot, sel=no, out[0..7]=outLSB, out[8..14]=outMSB, out[15]=outMSBbit);
+    Mux16(a[0..7]=outLSB, a[8..14]=outMSB, a[15]=outMSBbit, b=true, sel=false, out=out);
+    
+
+    Or8Way(in=outLSB, out=xOpYOr1);
+    Or8Way(in[0..6]=outMSB, in[7]=outMSBbit, out=xOpYOr2);
+    Or(a=xOpYOr1, b=xOpYOr2, out=xOpYOr);
+    Not(in=xOpYOr, out=zr);
+    
+
+    Or(a=outMSBbit, b=false, out=ng);
 }
+
+// Above follows proposed simplest implementation (communal)
